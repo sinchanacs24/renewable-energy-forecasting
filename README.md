@@ -65,12 +65,12 @@ This project solves that problem with machine learning:
 
 ## Screenshots
 
-| Home | Live Weather |
-|------|--------------|
+| Home                               | Live Weather                                       |
+| ---------------------------------- | -------------------------------------------------- |
 | ![Home page](docs/images/home.png) | ![Live weather page](docs/images/live-weather.png) |
 
-| Results | Detailed Report |
-|---------|-----------------|
+| Results                                  | Detailed Report                                 |
+| ---------------------------------------- | ----------------------------------------------- |
 | ![Results page](docs/images/results.png) | ![Detailed report page](docs/images/report.png) |
 
 **History**
@@ -100,26 +100,26 @@ flowchart LR
 
 ![System architecture](docs/images/architecture.png)
 
-| Part | What it does |
-|------|--------------|
-| **Client (browser)** | React single-page app with 6 pages. Gets the location, fetches live weather and shows charts. |
+| Part                 | What it does                                                                                          |
+| -------------------- | ----------------------------------------------------------------------------------------------------- |
+| **Client (browser)** | React single-page app with 6 pages. Gets the location, fetches live weather and shows charts.         |
 | **Server (FastAPI)** | REST API. Processes the weather data, runs the ML models and builds the summary, insights and report. |
-| **ML models** | `.joblib` files created by `train.py` (scaler + model pipelines). |
-| **Database** | SQLite file `predictions.db` that stores every successful prediction. |
-| **External APIs** | Open-Meteo (weather), BigDataCloud (place name from coordinates). |
+| **ML models**        | `.joblib` files created by `train.py` (scaler + model pipelines).                                     |
+| **Database**         | SQLite file `predictions.db` that stores every successful prediction.                                 |
+| **External APIs**    | Open-Meteo (weather), BigDataCloud (place name from coordinates).                                     |
 
 ## Tech stack
 
-| Layer | Technology |
-|-------|------------|
-| Frontend | React 18, Vite 5, Tailwind CSS 3, Recharts 2, React Router 6 |
-| Backend | Python 3, FastAPI, Uvicorn, Pydantic |
-| Machine learning | scikit-learn, pandas, NumPy, joblib |
-| Database | SQLite |
-| External APIs | Open-Meteo (weather, free, no API key), BigDataCloud (reverse geocoding), Browser Geolocation API |
-| Testing | pytest, FastAPI TestClient |
-| Deployment | Render (backend), Vercel (frontend) |
-| Tools | VS Code, Git, GitHub |
+| Layer            | Technology                                                                                        |
+| ---------------- | ------------------------------------------------------------------------------------------------- |
+| Frontend         | React 18, Vite 5, Tailwind CSS 3, Recharts 2, React Router 6                                      |
+| Backend          | Python 3, FastAPI, Uvicorn, Pydantic                                                              |
+| Machine learning | scikit-learn, pandas, NumPy, joblib                                                               |
+| Database         | SQLite                                                                                            |
+| External APIs    | Open-Meteo (weather, free, no API key), BigDataCloud (reverse geocoding), Browser Geolocation API |
+| Testing          | pytest, FastAPI TestClient                                                                        |
+| Deployment       | Render (backend), Vercel (frontend)                                                               |
+| Tools            | VS Code, Git, GitHub                                                                              |
 
 ## Machine learning
 
@@ -134,12 +134,12 @@ flowchart LR
 
 ### Models and results (on the test set)
 
-| Model | Solar MAE | Solar RMSE | Solar R² | Wind MAE | Wind RMSE | Wind R² |
-|-------|----------:|-----------:|---------:|---------:|----------:|--------:|
-| Linear Regression | 1.510 | 1.947 | 0.9930 | 8.088 | 9.996 | 0.8375 |
-| Decision Tree | 1.641 | 2.200 | 0.9910 | 1.647 | 2.193 | 0.9922 |
-| Random Forest | 1.409 | 1.832 | 0.9938 | **1.484** | **1.932** | **0.9939** |
-| SVR | **1.340** | **1.795** | **0.9940** | 1.506 | 2.002 | 0.9935 |
+| Model             | Solar MAE | Solar RMSE |   Solar R² |  Wind MAE | Wind RMSE |    Wind R² |
+| ----------------- | --------: | ---------: | ---------: | --------: | --------: | ---------: |
+| Linear Regression |     1.510 |      1.947 |     0.9930 |     8.088 |     9.996 |     0.8375 |
+| Decision Tree     |     1.641 |      2.200 |     0.9910 |     1.647 |     2.193 |     0.9922 |
+| Random Forest     |     1.409 |      1.832 |     0.9938 | **1.484** | **1.932** | **0.9939** |
+| SVR               | **1.340** |  **1.795** | **0.9940** |     1.506 |     2.002 |     0.9935 |
 
 MAE and RMSE are in kWh (lower is better). R² closer to 1 is better.
 
@@ -196,17 +196,17 @@ renewable-energy-forecasting/
 
 Base URL (local): `http://localhost:8000` · Interactive docs: `http://localhost:8000/docs`
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/health` | Server status → `{"status": "ok"}` |
-| GET | `/api/weather?lat=&lon=` | Live weather for a location (fetched by the server) |
-| POST | `/api/weather` | Same, using weather data sent by the browser |
-| POST | `/api/predict` | Weather + ML prediction + 24-h forecast. Saved to history |
-| GET | `/api/models/metrics` | Model evaluation report (MAE, RMSE, R² for all models) |
-| GET | `/api/history` | List of past predictions |
-| GET | `/api/history/{id}` | One saved prediction in full |
-| DELETE | `/api/history/{id}` | Delete one prediction |
-| DELETE | `/api/history` | Clear all history |
+| Method | Endpoint                 | Description                                               |
+| ------ | ------------------------ | --------------------------------------------------------- |
+| GET    | `/api/health`            | Server status → `{"status": "ok"}`                        |
+| GET    | `/api/weather?lat=&lon=` | Live weather for a location (fetched by the server)       |
+| POST   | `/api/weather`           | Same, using weather data sent by the browser              |
+| POST   | `/api/predict`           | Weather + ML prediction + 24-h forecast. Saved to history |
+| GET    | `/api/models/metrics`    | Model evaluation report (MAE, RMSE, R² for all models)    |
+| GET    | `/api/history`           | List of past predictions                                  |
+| GET    | `/api/history/{id}`      | One saved prediction in full                              |
+| DELETE | `/api/history/{id}`      | Delete one prediction                                     |
+| DELETE | `/api/history`           | Clear all history                                         |
 
 Example request:
 
@@ -266,21 +266,21 @@ The tests use a sample weather response, so they run without internet. They cove
 
 **Manual test cases (all passed):**
 
-| ID | Test case | Expected result |
-|----|-----------|-----------------|
-| TC01 | Backend health check | Status OK |
-| TC02 | Location allowed | Coordinates and place name shown |
-| TC03 | Location denied | Clear error message + Try again button |
-| TC04 | Fetch live weather | Temperature, humidity, wind, radiation shown |
-| TC05 | Weather service down | Friendly error, app does not crash |
-| TC06 | Invalid coordinates (latitude = 200) | Request rejected (HTTP 422) |
-| TC07 | Predict energy | Solar, wind, total shown; Results page opens |
-| TC08 | Night time (radiation = 0) | Solar energy = 0 kWh |
-| TC09 | 24-hour forecast | 24 hourly rows and chart |
-| TC10 | Refresh Results page | Same result loaded from database |
-| TC11 | Download CSV | File with header + 24 rows |
-| TC12 | History | Successful prediction saved, failed one not saved |
-| TC13 | Delete history record | Removed from list and database |
+| ID   | Test case                            | Expected result                                   |
+| ---- | ------------------------------------ | ------------------------------------------------- |
+| TC01 | Backend health check                 | Status OK                                         |
+| TC02 | Location allowed                     | Coordinates and place name shown                  |
+| TC03 | Location denied                      | Clear error message + Try again button            |
+| TC04 | Fetch live weather                   | Temperature, humidity, wind, radiation shown      |
+| TC05 | Weather service down                 | Friendly error, app does not crash                |
+| TC06 | Invalid coordinates (latitude = 200) | Request rejected (HTTP 422)                       |
+| TC07 | Predict energy                       | Solar, wind, total shown; Results page opens      |
+| TC08 | Night time (radiation = 0)           | Solar energy = 0 kWh                              |
+| TC09 | 24-hour forecast                     | 24 hourly rows and chart                          |
+| TC10 | Refresh Results page                 | Same result loaded from database                  |
+| TC11 | Download CSV                         | File with header + 24 rows                        |
+| TC12 | History                              | Successful prediction saved, failed one not saved |
+| TC13 | Delete history record                | Removed from list and database                    |
 
 ## Deployment (Render + Vercel)
 
@@ -291,14 +291,14 @@ The **backend** runs on Render and the **frontend** on Vercel. Vercel forwards e
 1. Sign in to [render.com](https://render.com) with GitHub → **New +** → **Web Service** → select this repository.
 2. Use these settings:
 
-| Setting | Value |
-|---------|-------|
-| Language | Python 3 |
-| Root Directory | `backend` |
-| Build Command | `pip install -r requirements.txt && python train.py` |
-| Start Command | `uvicorn app.main:app --host 0.0.0.0 --port $PORT` |
-| Instance Type | Free |
-| Environment Variable | `PYTHON_VERSION` = `3.11.9` |
+| Setting              | Value                                                |
+| -------------------- | ---------------------------------------------------- |
+| Language             | Python 3                                             |
+| Root Directory       | `backend`                                            |
+| Build Command        | `pip install -r requirements.txt && python train.py` |
+| Start Command        | `uvicorn app.main:app --host 0.0.0.0 --port $PORT`   |
+| Instance Type        | Free                                                 |
+| Environment Variable | `PYTHON_VERSION` = `3.11.9`                          |
 
 3. Deploy. Check that `https://<your-service>.onrender.com/api/health` returns `{"status":"ok"}`.
 
@@ -309,7 +309,10 @@ The **backend** runs on Render and the **frontend** on Vercel. Vercel forwards e
 ```json
 {
   "rewrites": [
-    { "source": "/api/:path*", "destination": "https://renewable-energy-forecasting.onrender.com/api/:path*" },
+    {
+      "source": "/api/:path*",
+      "destination": "https://renewable-energy-forecasting.onrender.com/api/:path*"
+    },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
@@ -323,16 +326,16 @@ Both Render and Vercel redeploy automatically every time you push to the `main` 
 
 ## Troubleshooting
 
-| Problem | Solution |
-|---------|----------|
-| First prediction on the live site fails or is slow | The free Render backend was asleep. Open `/api/health` on the Render link, wait for `{"status":"ok"}`, then try again. |
-| "Location permission was denied" | Click the lock icon in the address bar → allow **Location** → reload. Location only works on `https` or `localhost`. |
-| "Weather service unavailable: 429 Too Many Requests" | The free weather API is busy. The app retries automatically. Wait a minute and try again. |
-| History is empty on the live site | Render's free plan clears the database when the service restarts. Make a new prediction. |
-| `Activate.ps1 cannot be loaded` (Windows) | Run `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` once in PowerShell. |
-| `pip` permission denied | Use `python -m pip install -r requirements.txt` inside the activated venv. |
+| Problem                                                   | Solution                                                                                                                            |
+| --------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| First prediction on the live site fails or is slow        | The free Render backend was asleep. Open `/api/health` on the Render link, wait for `{"status":"ok"}`, then try again.              |
+| "Location permission was denied"                          | Click the lock icon in the address bar → allow **Location** → reload. Location only works on `https` or `localhost`.                |
+| "Weather service unavailable: 429 Too Many Requests"      | The free weather API is busy. The app retries automatically. Wait a minute and try again.                                           |
+| History is empty on the live site                         | Render's free plan clears the database when the service restarts. Make a new prediction.                                            |
+| `Activate.ps1 cannot be loaded` (Windows)                 | Run `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` once in PowerShell.                                                       |
+| `pip` permission denied                                   | Use `python -m pip install -r requirements.txt` inside the activated venv.                                                          |
 | DLL blocked by "Application Control policy" when training | Windows Smart App Control is blocking the packages. Turn it off in Windows Security → App & browser control, or reinstall the venv. |
-| Home page shows "Backend status: 🔴 offline" locally | Make sure `python run.py` is running in another terminal. |
+| Home page shows "Backend status: 🔴 offline" locally      | Make sure `python run.py` is running in another terminal.                                                                           |
 
 ## Limitations and future enhancements
 
@@ -351,24 +354,9 @@ Both Render and Vercel redeploy automatically every time you push to the `main` 
 - User login and cloud database so many users can keep their own history.
 - Let users enter their own panel and turbine capacity.
 
-## Team
-
-| Name |
-|------|
-| Partha C M |
-| Shobha N |
-| Shreya K S |
-| Sinchana C S |
-
-**Project guide:** Mr. Deepak Kumar B S, Assistant Professor, Department of CSE, East West College of Engineering, Bengaluru.
-
 ## Acknowledgements
 
 - [Open-Meteo](https://open-meteo.com/): free weather API
 - [BigDataCloud](https://www.bigdatacloud.com/): reverse geocoding (place names)
 - [scikit-learn](https://scikit-learn.org/), [FastAPI](https://fastapi.tiangolo.com/), [React](https://react.dev/), [Recharts](https://recharts.org/), [Tailwind CSS](https://tailwindcss.com/)
 - [Render](https://render.com/) and [Vercel](https://vercel.com/) for free hosting
-
----
-
-*This project was developed for academic purposes as part of the B.E. (CSE) curriculum at VTU.*
