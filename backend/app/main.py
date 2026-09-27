@@ -4,6 +4,7 @@ FastAPI application - the web integration layer (methodology step 8).
 Endpoints
     GET  /api/health                 -> server status
     GET  /api/weather?lat=&lon=      -> live weather for the user's location
+    POST /api/weather                -> same, using weather fetched by the browser
     POST /api/predict                -> weather + ML prediction, saved to history
     GET  /api/models/metrics         -> model evaluation report (MAE, RMSE, R2)
     GET  /api/history                -> previous predictions
@@ -11,17 +12,22 @@ Endpoints
     DELETE /api/history/{id}         -> delete one prediction
     DELETE /api/history              -> clear history
 """
+import os
 from contextlib import asynccontextmanager
+from pathlib import Path
+from typing import Optional
 
 import requests
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from . import database
 from .models import load_metrics
 from .predictor import load_models, predict_from_weather
-from .weather import fetch_weather
+from .weather import fetch_weather, parse_weather
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -50,6 +56,23 @@ app.add_middleware(
 class Coordinates(BaseModel):
     latitude: float = Field(..., ge=-90, le=90)
     longitude: float = Field(..., ge=-180, le=180)
+    # Optional: the browser can fetch Open-Meteo itself and send the raw response here.
+    # This avoids the free API's rate limit on shared cloud servers (HTTP 429).
+    raw_weather: Optional[dict] = None
+    place: Optional[str] = Field(None, max_length=200)
+
+
+def get_weather(coords: Coordinates) -> dict:
+    """Use weather sent by the browser if present, otherwise call the API from the server."""
+    if coords.raw_weather:
+        try:
+            return parse_weather(coords.raw_weather, coords.latitude, coords.longitude, coords.place)
+        except ValueError:
+            pass  # fall back to the server-side request
+    try:
+        return fetch_weather(coords.latitude, coords.longitude)
+    except (requests.RequestException, ValueError) as exc:
+        raise HTTPException(status_code=502, detail=f"Weather service unavailable: {exc}")
 
 
 @app.get("/api/health")
@@ -58,19 +81,18 @@ def health():
 
 
 @app.get("/api/weather")
-def weather(lat: float, lon: float):
-    try:
-        return fetch_weather(lat, lon)
-    except requests.RequestException as exc:
-        raise HTTPException(status_code=502, detail=f"Weather service unavailable: {exc}")
+def weather(lat: float = Query(..., ge=-90, le=90), lon: float = Query(..., ge=-180, le=180)):
+    return get_weather(Coordinates(latitude=lat, longitude=lon))
+
+
+@app.post("/api/weather")
+def weather_from_browser(coords: Coordinates):
+    return get_weather(coords)
 
 
 @app.post("/api/predict")
 def predict(coords: Coordinates):
-    try:
-        weather_data = fetch_weather(coords.latitude, coords.longitude)
-    except requests.RequestException as exc:
-        raise HTTPException(status_code=502, detail=f"Weather service unavailable: {exc}")
+    weather_data = get_weather(coords)
     result = predict_from_weather(weather_data)
     result["id"] = database.save_prediction(result)
     return result
@@ -105,3 +127,23 @@ def delete_history_item(prediction_id: int):
 def clear_history():
     database.clear_predictions()
     return {"cleared": True}
+
+
+# ---------------------------------------------------------------------------
+# Deployment: serve the built React app (frontend/dist) from this same server.
+# Locally this folder does not exist, so nothing changes during development.
+# ---------------------------------------------------------------------------
+FRONTEND_DIST = Path(os.getenv("FRONTEND_DIST", Path(__file__).resolve().parents[2] / "frontend" / "dist"))
+
+if FRONTEND_DIST.is_dir():
+    app.mount("/assets", StaticFiles(directory=FRONTEND_DIST / "assets"), name="assets")
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    def serve_frontend(full_path: str):
+        if full_path.startswith("api/"):
+            raise HTTPException(status_code=404, detail="Not found")
+        file = (FRONTEND_DIST / full_path).resolve()
+        if full_path and file.is_file() and FRONTEND_DIST.resolve() in file.parents:
+            return FileResponse(file)
+        # Any page such as /results or /history is handled by React Router.
+        return FileResponse(FRONTEND_DIST / "index.html")

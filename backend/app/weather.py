@@ -6,6 +6,8 @@ Given a latitude/longitude from the browser's geolocation, it returns the
 current weather and a 24-hour hourly forecast for the four parameters used
 by the models.
 """
+import time
+
 import requests
 
 from .config import REVERSE_GEOCODE_URL, WEATHER_API_URL
@@ -24,6 +26,11 @@ HOURLY_VARIABLES = [
     "wind_speed_10m",
     "shortwave_radiation",
 ]
+
+
+# Short cache so repeated clicks for the same place do not call the API again.
+_CACHE: dict = {}
+_CACHE_SECONDS = 600
 
 
 def get_location_name(latitude: float, longitude: float) -> str:
@@ -45,9 +52,9 @@ def get_location_name(latitude: float, longitude: float) -> str:
     return f"{latitude:.3f}, {longitude:.3f}"
 
 
-def fetch_weather(latitude: float, longitude: float) -> dict:
-    """Return current weather + 24 hourly forecast rows for the coordinates."""
-    params = {
+def weather_params(latitude: float, longitude: float) -> dict:
+    """Query parameters for Open-Meteo (the frontend uses the same ones)."""
+    return {
         "latitude": latitude,
         "longitude": longitude,
         "current": ",".join(CURRENT_VARIABLES),
@@ -56,50 +63,78 @@ def fetch_weather(latitude: float, longitude: float) -> dict:
         "timezone": "auto",
         "forecast_days": 2,
     }
-    response = requests.get(WEATHER_API_URL, params=params, timeout=10)
-    response.raise_for_status()
-    raw = response.json()
 
-    current = raw["current"]
-    hourly = raw["hourly"]
 
-    # Keep the next 24 hours starting from the current hour.
-    current_time = current["time"][:13]  # "YYYY-MM-DDTHH"
-    times = hourly["time"]
-    start = next((i for i, t in enumerate(times) if t[:13] >= current_time), 0)
-    end = start + 24
+def fetch_raw_weather(latitude: float, longitude: float) -> dict:
+    """Call Open-Meteo from the server, retrying if it is busy (HTTP 429)."""
+    key = (round(latitude, 2), round(longitude, 2))
+    cached = _CACHE.get(key)
+    if cached and time.time() - cached[0] < _CACHE_SECONDS:
+        return cached[1]
 
-    forecast = []
-    for i in range(start, min(end, len(times))):
-        forecast.append(
-            {
-                "time": times[i],
-                "temperature": _num(hourly["temperature_2m"][i]),
-                "humidity": _num(hourly["relative_humidity_2m"][i]),
-                "wind_speed": _num(hourly["wind_speed_10m"][i]),
-                "solar_radiation": _num(hourly["shortwave_radiation"][i]),
-            }
-        )
+    params = weather_params(latitude, longitude)
+    for attempt in range(3):
+        response = requests.get(WEATHER_API_URL, params=params, timeout=10)
+        if getattr(response, "status_code", 200) == 429 and attempt < 2:
+            time.sleep(1.5 * (attempt + 1))
+            continue
+        response.raise_for_status()
+        raw = response.json()
+        _CACHE[key] = (time.time(), raw)
+        return raw
+    raise requests.RequestException("Weather service is busy, please try again")
 
-    return {
-        "location": {
-            "latitude": raw.get("latitude", latitude),
-            "longitude": raw.get("longitude", longitude),
-            "timezone": raw.get("timezone", ""),
-            "name": get_location_name(latitude, longitude),
-        },
-        "current": {
-            "time": current["time"],
-            "temperature": _num(current["temperature_2m"]),
-            "humidity": _num(current["relative_humidity_2m"]),
-            "wind_speed": _num(current["wind_speed_10m"]),
-            "solar_radiation": _num(current["shortwave_radiation"]),
-            "cloud_cover": _num(current.get("cloud_cover")),
-            "is_day": bool(current.get("is_day", 1)),
-        },
-        "forecast": forecast,
-        "source": "Open-Meteo",
-    }
+
+def parse_weather(raw: dict, latitude: float, longitude: float, place: str | None = None) -> dict:
+    """Turn an Open-Meteo response into current weather + 24 hourly forecast rows."""
+    try:
+        current = raw["current"]
+        hourly = raw["hourly"]
+
+        # Keep the next 24 hours starting from the current hour.
+        current_time = current["time"][:13]  # "YYYY-MM-DDTHH"
+        times = hourly["time"]
+        start = next((i for i, t in enumerate(times) if t[:13] >= current_time), 0)
+        end = start + 24
+
+        forecast = []
+        for i in range(start, min(end, len(times))):
+            forecast.append(
+                {
+                    "time": times[i],
+                    "temperature": _num(hourly["temperature_2m"][i]),
+                    "humidity": _num(hourly["relative_humidity_2m"][i]),
+                    "wind_speed": _num(hourly["wind_speed_10m"][i]),
+                    "solar_radiation": _num(hourly["shortwave_radiation"][i]),
+                }
+            )
+
+        return {
+            "location": {
+                "latitude": raw.get("latitude", latitude),
+                "longitude": raw.get("longitude", longitude),
+                "timezone": raw.get("timezone", ""),
+                "name": place or get_location_name(latitude, longitude),
+            },
+            "current": {
+                "time": current["time"],
+                "temperature": _num(current["temperature_2m"]),
+                "humidity": _num(current["relative_humidity_2m"]),
+                "wind_speed": _num(current["wind_speed_10m"]),
+                "solar_radiation": _num(current["shortwave_radiation"]),
+                "cloud_cover": _num(current.get("cloud_cover")),
+                "is_day": bool(current.get("is_day", 1)),
+            },
+            "forecast": forecast,
+            "source": "Open-Meteo",
+        }
+    except (KeyError, IndexError, TypeError, ValueError) as exc:
+        raise ValueError(f"Unexpected weather data: {exc}") from exc
+
+
+def fetch_weather(latitude: float, longitude: float) -> dict:
+    """Return current weather + 24 hourly forecast rows for the coordinates."""
+    return parse_weather(fetch_raw_weather(latitude, longitude), latitude, longitude)
 
 
 def _num(value) -> float:

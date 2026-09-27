@@ -120,3 +120,36 @@ def test_metrics_report(client):
         for m in metrics.values():
             assert {"mae", "rmse", "r2"} <= set(m)
         assert report["targets"][target]["metrics"][report["targets"][target]["best_model"]]["r2"] > 0.9
+
+
+def test_weather_sent_by_browser_is_used(client, monkeypatch):
+    # If the browser sends the Open-Meteo response, the server must not call the API itself.
+    def fail(*args, **kwargs):
+        raise AssertionError("server should not call the weather API")
+
+    monkeypatch.setattr(weather.requests, "get", fail)
+    body = {"latitude": 12.97, "longitude": 77.59, "raw_weather": SAMPLE_OPEN_METEO, "place": "Yelahanka, Karnataka, India"}
+    data = client.post("/api/weather", json=body).json()
+    assert data["location"]["name"] == "Yelahanka, Karnataka, India"
+    assert data["current"]["temperature"] == 29.5
+    result = client.post("/api/predict", json=body).json()
+    assert len(result["hourly"]) == 24
+
+
+def test_server_retries_when_rate_limited(client, monkeypatch):
+    weather._CACHE.clear()
+    monkeypatch.setattr(weather.time, "sleep", lambda s: None)
+    calls = []
+
+    class Busy(FakeResponse):
+        status_code = 429
+
+    def flaky_get(url, params=None, timeout=None):
+        if "open-meteo" in url:
+            calls.append(1)
+            return Busy({}) if len(calls) < 3 else FakeResponse(SAMPLE_OPEN_METEO)
+        return FakeResponse({"city": "Bengaluru", "principalSubdivision": "Karnataka", "countryName": "India"})
+
+    monkeypatch.setattr(weather.requests, "get", flaky_get)
+    assert client.get("/api/weather", params={"lat": 13.0, "lon": 77.5}).status_code == 200
+    assert len(calls) == 3
