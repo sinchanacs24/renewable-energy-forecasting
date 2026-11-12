@@ -26,7 +26,7 @@ export default function Home() {
   return (
     <div className="space-y-10">
       <section className="rounded-2xl bg-gradient-to-r from-emerald-600 to-sky-600 p-8 text-white">
-        <p className="text-sm uppercase tracking-wide text-emerald-100">Final Year Project · Dept. of CSE, EWCE</p>
+        <p className="text-sm uppercase tracking-wide text-emerald-100">Live Weather · Machine Learning · 24-Hour Forecast</p>
         <h1 className="mt-2 text-3xl font-bold sm:text-4xl">
           AI-Driven Renewable Energy Generation Forecasting
         </h1>
